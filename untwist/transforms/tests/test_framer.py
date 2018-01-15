@@ -30,8 +30,6 @@ def test_framer_pad_start():
 
         frames = framer.process(channel)
 
-        assert(num_frames == frames.shape[0])
-
         for i, frame in enumerate(frames):
 
             start = i * hop_size
@@ -39,7 +37,7 @@ def test_framer_pad_start():
 
             expected = channel2[start:end]
 
-            assert(np.array_equal(expected, frame))
+            assert(np.array_equal(expected, frame[:, 0]))
 
 
 def test_framer_pad_end():
@@ -71,7 +69,7 @@ def test_framer_pad_end():
 
             expected = channel2[start:end]
 
-            assert(np.array_equal(expected, frame))
+            assert(np.array_equal(expected, frame[:, 0]))
 
 
 def test_framer_wave_full():
@@ -102,18 +100,18 @@ def test_framer_wave_full():
 
             expected = channel[start:end]
 
-            assert(np.array_equal(expected, frame))
+            assert(np.array_equal(expected, frame[:, 0]))
 
 
 def test_framer_spectrogram_full():
     '''
-    Spectrogram, full frames only.
+    Stereo spectrogram, full frames only.
     '''
 
     window_size = 1024
     hop_size = 512
 
-    signal = audio.Spectrogram(np.random.normal(size=(2, 44100)))
+    signal = audio.Spectrogram(np.random.normal(size=(513, 44100, 2)))
     framer = stft.Framer(window_size, hop_size, False, False)
     frames = framer.process(signal)
 

@@ -24,9 +24,10 @@ class Framer(algorithms.Processor):
 
     Returns:
     -------
-    If input is a Wave, returns an ndarray of shape: (num_frames, window_size)
+    If input is a Wave, returns an ndarray of shape:
+        (num_frames, window_size, num_channels)
     If input is a Spectrogram, returns an ndarray of shape:
-    (num_frames, num_bands, window_size)
+        (num_frames, num_bands, window_size, num_channels)
     '''
 
     def __init__(self,
@@ -68,11 +69,11 @@ class Framer(algorithms.Processor):
 
         return int(num_frames)
 
-    @algorithms.check_mono
     def process(self, x):
 
         # Calculate number of frames based on padding requirements
         num_frames = self.calc_num_frames(x)
+        print(num_frames)
 
         # Now padding
         pad_start = pad_end = 0
@@ -86,17 +87,27 @@ class Framer(algorithms.Processor):
 
         x = x.zero_pad(pad_start, pad_end)
 
-        size = x.strides[1]  # no problem if Wave is mono (currently expected)
-
         if isinstance(x, audio.Spectrogram):
 
-            shape = (num_frames, x.num_bands, self.window_size)
-            strides = (size * self.hop_size, size * x.num_frames, size)
+            shape = (num_frames,
+                     x.num_bands,
+                     self.window_size,
+                     x.num_channels)
+
+            strides = (self.hop_size * x.strides[1],
+                       x.strides[0],
+                       x.strides[1],
+                       x.strides[2])
 
         elif isinstance(x, (audio.Signal, audio.Wave)):
 
-            shape = (num_frames, self.window_size)
-            strides = (size * self.hop_size, size)
+            shape = (num_frames,
+                     self.window_size,
+                     x.num_channels)
+
+            strides = (self.hop_size * x.strides[0],
+                       x.strides[0],
+                       x.strides[1])
 
         frames = np.lib.stride_tricks.as_strided(x,
                                                  shape=shape,
@@ -123,20 +134,21 @@ class STFT(algorithms.Processor):
             self.window = window
         else:
             self.window = signal.get_window(window, fft_size)
+        self.window.shape = (1, -1, 1)
         self.fft_size = int(fft_size)
         self.hop_size = int(hop_size)
-        self.window_size = len(self.window)
-        self.framer = Framer(self.window_size, self.hop_size, True, True, True)
+        self.framer = Framer(self.window.size, self.hop_size, True, True, True)
         self.half_window = int(np.floor(len(self.window) / 2.0))
-        self.overlap = self.window_size - self.hop_size
+        self.overlap = self.window.size - self.hop_size
 
     # This appears to be faster than scipy's STFT
-    @algorithms.check_mono
-    @parallel.parallel_process(1, 2)
+    # May want to consider swapping axes for contiugous memory?
+    # @parallel.parallel_process(1, 2)
     def process(self, wave):
 
         frames = self.framer.process(wave)
-        transform = np.fft.rfft(frames * self.window, self.fft_size)
+        transform = np.fft.rfft(frames * self.window, self.fft_size, axis=1)
+
         self.freqs = (np.arange(self.fft_size//2 + 1) * wave.sample_rate /
                       self.fft_size)
 
@@ -173,7 +185,7 @@ class ISTFT(algorithms.Processor):
         if not signal.check_COLA(self.window, self.window_size, self.overlap):
             raise Exception('COLA constraint not satisfied')
 
-    @parallel.parallel_process(2, 1)
+    # @parallel.parallel_process(2, 1)
     def process(self, spectrogram):
         # best to use scipy here for overlap add
         t, result = signal.istft(spectrogram,
@@ -181,6 +193,7 @@ class ISTFT(algorithms.Processor):
                                  self.window,
                                  self.window_size,
                                  self.overlap,
-                                 self.fft_size)
+                                 self.fft_size,
+                                 time_axis=-1)
 
-        return audio.Wave(result * self.scale, spectrogram.sample_rate)
+        return audio.Wave(result.T * self.scale, spectrogram.sample_rate)

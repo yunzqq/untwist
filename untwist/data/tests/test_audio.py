@@ -81,9 +81,9 @@ def test_masks():
     silence = Wave(np.zeros(sine.shape), sine.sample_rate)
     SINE = STFT().process(sine)
     SILENCE = STFT().process(silence)
-    bm = BinaryMask(SINE, SILENCE)[:, :-1]
+    bm = BinaryMask(SINE, SILENCE)[:, :-1, 0]
     assert(np.sum(bm) == bm.shape[0] * bm.shape[1])
-    rm = RatioMask(SINE, SILENCE)[:, :-1]
+    rm = RatioMask(SINE, SILENCE)[:, :-1, 0]
     assert(np.round(np.sum(rm)) == rm.shape[0] * rm.shape[1])
-    crm = ComplexRatioMask(SINE, SILENCE)[:, :-1]
+    crm = ComplexRatioMask(SINE, SILENCE)[:, :-1, 0]
     assert(np.round(np.sum(crm)) == crm.shape[0] * crm.shape[1])

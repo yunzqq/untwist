@@ -408,7 +408,15 @@ class Spectrogram(Signal):
 
     def __new__(cls, samples, sample_rate=defaults.sample_rate,
                 hop_size=1, freqs=None, freq_scale=defaults.freq_scale):
+
+        # Ensure spectrograms is 3D
+        if samples.ndim == 1:
+            samples = samples.reshape(-1, 1)
+        if samples.ndim == 2:
+            samples = np.expand_dims(samples, -1)
+
         instance = Signal.__new__(cls, samples, sample_rate)
+
         instance.hop_size = hop_size
         instance.freq_scale = freq_scale
 
@@ -430,7 +438,7 @@ class Spectrogram(Signal):
 
     @property
     def num_channels(self):
-        return 1
+        return 1 if self.ndim <= 2 else self.shape[2]
 
     @property
     def num_bands(self):
@@ -468,10 +476,18 @@ class Spectrogram(Signal):
 
         """
 
-        start = np.zeros((self.num_bands, start_frames), _types.float_)
-        end = np.zeros((self.num_bands, end_frames), _types.float_)
+        start = np.zeros((self.num_bands,
+                          start_frames,
+                          self.num_channels),
+                         _types.float_)
+
+        end = np.zeros((self.num_bands,
+                        end_frames,
+                        self.num_channels),
+                       _types.float_)
+
         return Spectrogram(
-                np.c_[start, self, end],
+                np.concatenate((start, self, end), axis=1),
                 self.sample_rate,
                 self.hop_size,
                 self.freqs,
@@ -523,7 +539,10 @@ class Spectrogram(Signal):
         log_yscale: boolean
             Plot on log-y axis.
         """
-        mag = self.magnitude()
+
+        # Average over channels for now
+        mag = self.magnitude().mean(axis=-1)
+
         if log_mag:
             mag = 20. * np.log10((mag / np.max(mag)) + np.spacing(1))
             min_val = -80

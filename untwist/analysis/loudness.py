@@ -97,11 +97,17 @@ class EBUR128(algorithms.Processor):
         num_frames_STL = self.framer_STL.calc_num_frames(wave)
         energy_STL = np.zeros(num_frames_STL)
 
-        for channel, gain in zip(wave.T, self.gains):
+        channel_gains = self.gains[:wave.num_channels].reshape(1, -1)
 
-            energy_ML += gain * self.framer_ML.process(channel).mean(1)
+        energy_ML = np.sum(
+            channel_gains * self.framer_ML.process(wave).mean(1),
+            axis=-1
+        )
 
-            energy_STL += gain * self.framer_STL.process(channel).mean(1)
+        energy_STL = np.sum(
+            channel_gains * self.framer_STL.process(wave).mean(1),
+            axis=-1
+        )
 
         '''
         Loudness Range (LRA)
