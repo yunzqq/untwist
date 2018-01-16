@@ -6,6 +6,7 @@ import numpy as np
 from ..base import algorithms
 from ..base import parallel
 from ..data import audio
+from ..utilities import general
 from scipy import signal
 
 
@@ -45,29 +46,14 @@ class Framer(algorithms.Processor):
         self.return_copy = return_copy
 
     def calc_num_frames(self, x):
-        if self.pad_end:
 
-            if self.pad_start:
+        num_frames = general.calc_num_frames(x.num_frames,
+                                             self.window_size,
+                                             self.hop_size,
+                                             self.pad_start,
+                                             self.pad_end)
 
-                num_frames = np.ceil(
-                    (x.num_frames + self.half_window) /
-                    self.hop_size)
-            else:
-
-                num_frames = np.ceil(x.num_frames / self.hop_size)
-
-        elif self.pad_start:
-
-            num_frames = np.floor(
-                (x.num_frames + self.half_window - self.window_size) /
-                self.hop_size) + 1
-        else:
-
-            num_frames = np.floor(
-                (x.num_frames - self.window_size) /
-                self.hop_size) + 1
-
-        return int(num_frames)
+        return num_frames
 
     def process(self, x):
 
