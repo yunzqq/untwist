@@ -22,36 +22,3 @@ class TemporaryDirectory(object):
 def get_duration(wav_file):
     with wave.open(wav_file, 'rb') as f:
         return f.getnframes() / f.getframerate()
-
-
-def calc_num_frames(signal_length,
-                    window_size,
-                    hop_size,
-                    pad_start,
-                    pad_end):
-
-    half_window = int(window_size // 2)
-
-    if pad_end:
-
-        if pad_start:
-
-            num_frames = np.ceil(
-                (signal_length + half_window) /
-                hop_size)
-        else:
-
-            num_frames = np.ceil(signal_length / hop_size)
-
-    elif pad_start:
-
-        num_frames = np.floor(
-            (signal_length + half_window - window_size) /
-            hop_size) + 1
-    else:
-
-        num_frames = np.floor(
-            (signal_length - window_size) /
-            hop_size) + 1
-
-    return int(num_frames)
