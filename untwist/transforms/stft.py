@@ -73,7 +73,6 @@ class Framer(algorithms.Processor):
 
         # Calculate number of frames based on padding requirements
         num_frames = self.calc_num_frames(x)
-        print(num_frames)
 
         # Now padding
         pad_start = pad_end = 0
@@ -134,7 +133,7 @@ class STFT(algorithms.Processor):
             self.window = window
         else:
             self.window = signal.get_window(window, fft_size)
-        self.window.shape = (1, -1, 1)
+        self.window.shape = (-1, 1, 1)
         self.fft_size = int(fft_size)
         self.hop_size = int(hop_size)
         self.framer = Framer(self.window.size, self.hop_size, True, True, True)
@@ -147,12 +146,13 @@ class STFT(algorithms.Processor):
     def process(self, wave):
 
         frames = self.framer.process(wave)
-        transform = np.fft.rfft(frames * self.window, self.fft_size, axis=1)
+        frames = np.swapaxes(frames, 0, 1)
+        transform = np.fft.rfft(frames * self.window, self.fft_size, axis=0)
 
         self.freqs = (np.arange(self.fft_size//2 + 1) * wave.sample_rate /
                       self.fft_size)
 
-        return audio.Spectrogram(transform.T,
+        return audio.Spectrogram(transform,
                                  wave.sample_rate,
                                  self.hop_size,
                                  self.freqs,
@@ -194,6 +194,7 @@ class ISTFT(algorithms.Processor):
                                  self.window_size,
                                  self.overlap,
                                  self.fft_size,
-                                 time_axis=-1)
+                                 time_axis=1,
+                                 freq_axis=0)
 
-        return audio.Wave(result.T * self.scale, spectrogram.sample_rate)
+        return audio.Wave(result * self.scale, spectrogram.sample_rate)
