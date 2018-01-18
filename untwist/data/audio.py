@@ -36,7 +36,7 @@ class Signal(np.ndarray):
 
         if len(samples.shape) == 1:
             samples.shape = (samples.shape[0], 1)
-        instance = np.array(samples).view(cls)  # Copies samples
+        instance = np.asfortranarray(samples).view(cls)  # Copies samples
         instance.sample_rate = sample_rate
         return instance
 
@@ -82,7 +82,7 @@ class Signal(np.ndarray):
     def time(self):
         return np.arange(self.num_frames) / self.sample_rate
 
-    def zero_pad(self, start_frames, end_frames=0):
+    def zero_pad(self, start_frames=0, end_frames=0):
         """
         Pad with zeros at the start and/or end
 
@@ -95,11 +95,12 @@ class Signal(np.ndarray):
 
         """
 
-        start = np.zeros((start_frames, self.num_channels), _types.float_)
-        end = np.zeros((end_frames, self.num_channels), _types.float_)
-        # avoid 1d shape
-        tmp = self.reshape(self.shape[0], self.num_channels)
-        return self.__class__(np.concatenate((start, tmp, end)),
+        shape = list(self.shape)
+        shape[0] += start_frames + end_frames
+        data = np.zeros(shape, order='F', dtype=self.dtype)
+        data[start_frames:start_frames + self.num_frames] = self
+
+        return self.__class__(data,
                               self.sample_rate)
 
     def is_mono(self):
@@ -476,22 +477,16 @@ class Spectrogram(Signal):
 
         """
 
-        start = np.zeros((self.num_bands,
-                          start_frames,
-                          self.num_channels),
-                         _types.float_)
+        shape = list(self.shape)
+        shape[1] += start_frames + end_frames
+        data = np.zeros(shape, order='F', dtype=self.dtype)
+        data[:, start_frames:start_frames + self.num_frames] = self
 
-        end = np.zeros((self.num_bands,
-                        end_frames,
-                        self.num_channels),
-                       _types.float_)
-
-        return Spectrogram(
-                np.concatenate((start, self, end), axis=1),
-                self.sample_rate,
-                self.hop_size,
-                self.freqs,
-                self.freq_scale)
+        return Spectrogram(data,
+                           self.sample_rate,
+                           self.hop_size,
+                           self.freqs,
+                           self.freq_scale)
 
     def plot(self, **kwargs):
         return self.plot_magnitude(**kwargs)

@@ -117,9 +117,8 @@ class Framer(algorithms.Processor):
         frames = np.lib.stride_tricks.as_strided(x,
                                                  shape=shape,
                                                  strides=strides)
-
         if self.return_copy:
-            return frames.copy()
+            return frames.copy('K')
         else:
             return frames
 
@@ -139,21 +138,23 @@ class STFT(algorithms.Processor):
             self.window = window
         else:
             self.window = signal.get_window(window, fft_size)
-        self.window.shape = (-1, 1, 1)
         self.fft_size = int(fft_size)
         self.hop_size = int(hop_size)
-        self.framer = Framer(self.window.size, self.hop_size, True, True, True)
+        self.framer = Framer(self.window.size, self.hop_size,
+                             True, True, False)
         self.half_window = int(np.floor(len(self.window) / 2.0))
         self.overlap = self.window.size - self.hop_size
 
     # This appears to be faster than scipy's STFT
-    # May want to consider swapping axes for contiugous memory?
     # @parallel.parallel_process(1, 2)
     def process(self, wave):
 
         frames = self.framer.process(wave)
+
         frames = np.swapaxes(frames, 0, 1)
-        transform = np.fft.rfft(frames * self.window, self.fft_size, axis=0)
+
+        transform = np.fft.rfft(frames * self.window[:, None, None],
+                                self.fft_size, axis=0)
 
         self.freqs = (np.arange(self.fft_size//2 + 1) * wave.sample_rate /
                       self.fft_size)
