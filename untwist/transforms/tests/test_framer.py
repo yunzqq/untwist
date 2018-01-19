@@ -26,18 +26,18 @@ def test_framer_pad_start():
     num_frames = int((signal.num_frames + window_size//2 - window_size) //
                      hop_size) + 1
 
-    for channel, channel2 in zip(signal.T, signal2.T):
+    frames = framer.process(signal)
 
-        frames = framer.process(channel)
+    assert(num_frames == frames.shape[1])
 
-        for i, frame in enumerate(frames):
+    for i in range(num_frames):
 
-            start = i * hop_size
-            end = start + window_size
+        start = i * hop_size
+        end = start + window_size
 
-            expected = channel2[start:end]
+        expected = signal2[start:end]
 
-            assert(np.array_equal(expected, frame[:, 0]))
+        assert(np.array_equal(expected, frames[:, i]))
 
 
 def test_framer_pad_end():
@@ -54,22 +54,20 @@ def test_framer_pad_end():
 
     framer = stft.Framer(window_size, hop_size, False, True)
 
-    num_frames = np.ceil(signal.num_frames / hop_size)
+    num_frames = int(np.ceil(signal.num_frames / hop_size))
 
-    for channel, channel2 in zip(signal.T, signal2.T):
+    frames = framer.process(signal)
 
-        frames = framer.process(channel)
+    assert(num_frames == frames.shape[1])
 
-        assert(num_frames == frames.shape[0])
+    for i in range(num_frames):
 
-        for i, frame in enumerate(frames):
+        start = i * hop_size
+        end = start + window_size
 
-            start = i * hop_size
-            end = start + window_size
+        expected = signal2[start:end]
 
-            expected = channel2[start:end]
-
-            assert(np.array_equal(expected, frame[:, 0]))
+        assert(np.array_equal(expected, frames[:, i]))
 
 
 def test_framer_wave_full():
@@ -87,20 +85,18 @@ def test_framer_wave_full():
 
     num_frames = (signal.num_frames - window_size) // hop_size + 1
 
-    for channel in signal.T:
+    frames = framer.process(signal)
 
-        frames = framer.process(channel)
+    assert(num_frames == frames.shape[1])
 
-        assert(num_frames == frames.shape[0])
+    for i in range(num_frames):
 
-        for i, frame in enumerate(frames):
+        start = i * hop_size
+        end = start + window_size
 
-            start = i * hop_size
-            end = start + window_size
+        expected = signal[start:end]
 
-            expected = channel[start:end]
-
-            assert(np.array_equal(expected, frame[:, 0]))
+        assert(np.array_equal(expected, frames[:, i]))
 
 
 def test_framer_spectrogram_full():
@@ -117,13 +113,13 @@ def test_framer_spectrogram_full():
 
     num_frames = (signal.shape[1] - window_size) // hop_size + 1
 
-    assert(num_frames == frames.shape[0])
+    assert(num_frames == frames.shape[2])
 
-    for i, frame in enumerate(frames):
+    for i in range(num_frames):
 
         start = i * hop_size
         end = start + window_size
 
         expected = signal[:, start:end]
 
-        assert(np.array_equal(expected, frame))
+        assert(np.array_equal(expected, frames[:, :, i]))
