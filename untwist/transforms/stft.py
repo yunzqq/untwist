@@ -25,9 +25,9 @@ class Framer(algorithms.Processor):
     Returns:
     -------
     If input is a Wave, returns an ndarray of shape:
-        (num_frames, window_size, num_channels)
+        (window_size, num_frames, num_channels)
     If input is a Spectrogram, returns an ndarray of shape:
-        (num_frames, num_bands, window_size, num_channels)
+        (num_bands, window_size, num_frames, num_channels)
     '''
 
     def __init__(self,
@@ -94,24 +94,24 @@ class Framer(algorithms.Processor):
 
         if isinstance(x, audio.Spectrogram):
 
-            shape = (num_frames,
-                     x.num_bands,
+            shape = (x.num_bands,
                      self.window_size,
+                     num_frames,
                      x.num_channels)
 
-            strides = (self.hop_size * x.strides[1],
-                       x.strides[0],
+            strides = (x.strides[0],
                        x.strides[1],
+                       self.hop_size * x.strides[1],
                        x.strides[2])
 
         elif isinstance(x, (audio.Signal, audio.Wave)):
 
-            shape = (num_frames,
-                     self.window_size,
+            shape = (self.window_size,
+                     num_frames,
                      x.num_channels)
 
-            strides = (self.hop_size * x.strides[0],
-                       x.strides[0],
+            strides = (x.strides[0],
+                       self.hop_size * x.strides[0],
                        x.strides[1])
 
         frames = np.lib.stride_tricks.as_strided(x,
@@ -150,8 +150,6 @@ class STFT(algorithms.Processor):
     def process(self, wave):
 
         frames = self.framer.process(wave)
-
-        frames = np.swapaxes(frames, 0, 1)
 
         transform = np.fft.rfft(frames * self.window[:, None, None],
                                 self.fft_size, axis=0)
